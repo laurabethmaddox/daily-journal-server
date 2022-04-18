@@ -31,3 +31,30 @@ ENTRIES = [
 
 def get_all_entries():
     return ENTRIES
+
+def get_single_entry(id):
+    # Variable to hold the found entry, if it exists
+    requested_entry = None
+
+    # Iterate the ENTRIES list above
+    for entry in ENTRIES:
+        if entry["id"] == id:
+            requested_entry = entry
+
+    return requested_entry
+
+def create_entry(entry):
+    # Get the id value of the last entry in the list
+    max_id = ENTRIES[-1]["id"]
+
+    # Add 1 to whatever that number is
+    new_id = max_id + 1
+
+    # Add an `id` property to the entry dictionary
+    entry["id"] = new_id
+
+    # Add the entry dictionary to the list
+    ENTRIES.append(entry)
+
+    # Return the dictionary with `id` property added
+    return entry

@@ -1,5 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from views import get_all_entries
+import json
+from views import get_all_entries, get_single_entry, create_entry
+from views import get_all_moods, get_single_mood, create_mood
 
 # Here's a class. It inherits from another class.
 # For now, think of a class as a container for functions that
@@ -10,6 +12,26 @@ class HandleRequests(BaseHTTPRequestHandler):
     # It gives a description of the class or function
     """Controls the functionality of any GET, PUT, POST, DELETE requests to the server
     """
+
+    def parse_url(self, path):
+        # Just like splitting a string in JavaScript. If the 
+        # path is "/entries/1", the resulting list will
+        # have "" at index 0, "entries" at index 1, and "1"
+        # at index 2.
+        path_params = path.split("/")
+        resource = path_params[1]
+        id = None
+
+        # Try to get the item at index 2
+        try:
+            # Convert the string "1" to the integer 1
+            id = int(path_params[2])
+        except IndexError:
+            pass # No route parameter exists: /entries
+        except ValueError:
+            pass # Request had trailing slash: /entries/
+
+        return (resource, id) # This is a tuple
 
     # Here's a class function
     def _set_headers(self, status):
@@ -31,10 +53,8 @@ class HandleRequests(BaseHTTPRequestHandler):
         """
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods',
-                        'GET, POST, PUT, DELETE')
-        self.send_header('Access-Control-Allow-Headers',
-                        'X-Requested-With, Content-Type, Accept')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+        self.send_header('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept')
         self.end_headers()
 
     # Here's a method on the class that overrides the parent's method.
@@ -44,20 +64,25 @@ class HandleRequests(BaseHTTPRequestHandler):
         """
         # Set the response code to 'Ok'
         self._set_headers(200)
+        response = {} # Default response
 
-        # Your new console.log() that outputs to the terminal
-        print(self.path)
+        # Parse the URL and capture the tuple that is returned
+        (resource, id) = self.parse_url(self.path)
 
         # It's an if..else statement
-        if self.path == "/entries":
-            # In Python, this is a list of dictionaries
-            # In JavaScript, you would call it an array of objects
-            response = get_all_entries()
-        else:
-            response = []
+        if resource == "entries":
+            if id is not None:
+                response = f"{get_single_entry(id)}"
+            else:
+                response = f"{get_all_entries()}"
+        elif resource == "moods":
+            if id is not None:
+                response = f"{get_single_mood(id)}"
+            else:
+                response = f"{get_all_moods()}"
 
         # This weird code sends a response back to the client
-        self.wfile.write(f"{response}".encode())
+        self.wfile.write(response.encode())
 
     # Here's a method on the class that overrides the parent's method.
     # It handles any POST request.
@@ -66,15 +91,37 @@ class HandleRequests(BaseHTTPRequestHandler):
         """
         # Set response code to 'Created'
         self._set_headers(201)
-
         content_len = int(self.headers.get('content-length', 0))
         post_body = self.rfile.read(content_len)
-        response = f"received post request:<br>{post_body}"
-        self.wfile.write(response.encode())
+
+        # Convert JSON string to a Python dictionary
+        post_body = json.loads(post_body)
+
+        # Parse the URL
+        (resource, id) = self.parse_url(self.path)
+
+        # Initialize new entry
+        new_entry = None
+
+        # Add a new entry to the list
+        if resource == "entries":
+            new_entry = create_entry(post_body)
+
+            # Encode the new entry and send in response
+            self.wfile.write(f"{new_entry}".encode())
+
+        # Initialize new mood
+        new_mood = None
+
+        # Add a new mood to the list
+        if resource == "moods":
+            new_mood = create_mood(post_body)
+
+            # Encode the new mood and send in response
+            self.wfile.write(f"{new_mood}".encode())
 
     # Here's a method on the class that overrides the parent's method.
     # It handles any PUT request.
-
     def do_PUT(self):
         """Handles PUT requests to the server
         """
